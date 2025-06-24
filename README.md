@@ -228,25 +228,6 @@ terraform apply
 ansible-playbook -vvv install_web.yml
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For issues and questions:
-
-1. Check the troubleshooting section
-2. Review Jenkins and container logs
-3. Open an issue in the repository
 
 ---
 
