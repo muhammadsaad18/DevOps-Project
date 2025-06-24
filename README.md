@@ -1,135 +1,253 @@
-# Automated DevOps CI/CD Pipeline
+# One-Click Jenkins Pipeline Deployment
 
-This project demonstrates a fully automated CI/CD pipeline using Jenkins, Terraform, Ansible, and Docker to deploy a static website on an Azure VM. It provisions infrastructure, configures a web server, and deploys the application—all in one seamless Jenkins pipeline.
+A fully automated DevOps pipeline using Jenkins (in Docker) that provisions Azure VMs with Terraform, configures them with Ansible, and deploys a static web application.
 
-## Objective
-Automate the provisioning of an Azure VM, install Apache, and deploy a static website with a single Jenkins pipeline, showcasing a robust DevOps workflow.
+## 🚀 Features
 
-## Technology Stack
-- Docker: Containerizes Jenkins for portability
-- Jenkins: Orchestrates the CI/CD pipeline
-- Terraform: Provisions Azure infrastructure
-- Ansible: Configures VM and deploys the app
-- Azure: Hosts the Ubuntu VM
-- Git: Manages source code and versioning
+- **One-Click Deployment**: Single Jenkins pipeline executes the entire workflow
+- **Infrastructure as Code**: Terraform provisions Azure VMs with proper networking
+- **Configuration Management**: Ansible installs and configures Apache web server
+- **Containerized CI/CD**: Jenkins runs in Docker with all required tools
+- **Automated Testing**: Pipeline includes deployment verification
+- **Clean Teardown**: Option to destroy infrastructure when done
 
-## Project Structure
+## 🛠 Technology Stack
+
+| Tool          | Purpose                                             |
+| ------------- | --------------------------------------------------- |
+| **Docker**    | Host Jenkins in a container                         |
+| **Jenkins**   | Automate the workflow                               |
+| **Terraform** | Provision the virtual machine                       |
+| **Ansible**   | Configure the VM and deploy the web app             |
+| **Azure**     | Host the virtual machine                            |
+| **Git**       | Store code, playbooks, and Terraform configurations |
+
+## 📁 Project Structure
+
+```
 project/
-├── terraform/                    # Infrastructure as Code
-│   ├── main.tf                 # Azure resource definitions
-│   ├── variables.tf            # Variable declarations
-│   └── terraform.tfvars.example # Example variable values
-├── ansible/                      # Server configuration
-│   ├── install_web.yml         # Apache installation playbook
-│   └── deploy_app.yml          # App deployment playbook
-├── app/                         # Static website files
-│   └── index.html              # Sample webpage
-├── Jenkinsfile                  # Pipeline script
-└── README.txt                   # Project documentation
+├── terraform/
+│   ├── main.tf                 # Main Terraform configuration
+│   ├── variables.tf            # Variable definitions
+│   ├── inventory.tpl           # Ansible inventory template
+│   └── terraform.tfvars.example # Example variables file
+├── ansible/
+│   ├── install_web.yml         # Main playbook
+│   ├── ansible.cfg             # Ansible configuration
+│   └── templates/
+│       └── vhost.conf.j2       # Apache virtual host template
+├── app/
+│   └── index.html              # Static web application
+├── Jenkinsfile                 # Jenkins pipeline definition
+├── Dockerfile.jenkins          # Custom Jenkins image
+├── plugins.txt                 # Jenkins plugins list
+├── setup-jenkins.sh            # Linux/Mac setup script
+├── setup-jenkins.ps1           # Windows PowerShell setup script
+└── README.md                   # This file
+```
 
-## Getting Started
+## 🔧 Prerequisites
 
-### Prerequisites
-- Active Azure subscription
-- Docker installed
-- SSH key pair for VM access
-- Git repository with this project
+### Required Software (Windows)
 
-### Step 1: Launch Jenkins in Docker
-Run Jenkins with necessary tools mounted:
-docker run -d \
-  --name jenkins \
-  -p 8080:8080 -p 50000:50000 \
-  -v jenkins_home:/var/jenkins_home \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v $(which terraform):/usr/local/bin/terraform \
-  -v $(which ansible-playbook):/usr/local/bin/ansible-playbook \
-  -v $(pwd):/workspace \
-  jenkins/jenkins:lts
+- **Docker Desktop for Windows** - Download from [docker.com](https://www.docker.com/products/docker-desktop)
+- **Git for Windows** - Download from [git-scm.com](https://git-scm.com/download/win)
+- **PowerShell** (included with Windows)
 
-### Step 2: Configure Jenkins
-1. Access Jenkins at http://localhost:8080
-2. Complete the initial setup and install suggested plugins
-3. Install additional plugins:
-   - Git
-   - Pipeline
-   - SSH Agent
-4. Add credentials in Manage Jenkins → Credentials → Global:
-   | ID                        | Type                          | Description                           |
-   |---------------------------|-------------------------------|---------------------------------------|
-   | azure-subscription-id     | Secret text                   | Azure subscription ID                 |
-   | azure-client-id           | Secret text                   | Azure service principal client ID     |
-   | azure-client-secret       | Secret text                   | Azure service principal secret        |
-   | azure-tenant-id           | Secret text                   | Azure tenant ID                      |
-   | azure-vm-ssh-key          | SSH Username with private key | Private key for VM access (e.g., azureuser) |
-   | azure-vm-ssh-public-key   | Secret text                   | Public key for VM access             |
+> **Note**: All tools (Terraform, Ansible, Azure CLI) are pre-installed in the Docker container - no manual installation needed!
 
-### Step 3: Configure Terraform
-1. Copy terraform/terraform.tfvars.example to terraform/terraform.tfvars
-2. Update with your values:
-   resource_group_name = "devops-pipeline-rg"
-   location           = "East US"
-   prefix             = "devops"
-   vm_size            = "Standard_B1s"
-   admin_username     = "azureuser"
-   ssh_public_key     = "ssh-rsa AAAAB3NzaC1yc2E... your-email@example.com"
+### Azure Requirements
 
-### Step 4: Set Up Jenkins Pipeline
-1. Create a new Pipeline job in Jenkins
-2. Point it to your Git repository
-3. Set the pipeline script path to Jenkinsfile
-4. Run the pipeline
+- **Azure Subscription** with sufficient permissions
+- **Azure Service Principal** with Contributor role
+- **SSH Key Pair** for VM access
 
-## Pipeline Stages
-1. Checkout: Clones the repository
-2. Terraform Init & Apply: Provisions Azure resources (Resource Group, VNet, Subnet, Public IP, NIC, Ubuntu VM)
-3. Ansible Configure & Deploy: Installs Apache and deploys index.html to /var/www/html
-4. Verify: Checks deployment success via curl http://<public_ip>
+## 🚀 Quick Start
 
-## Accessing the Website
-After a successful run, visit:
-http://<public_ip>
+### 1. Clone the Repository
 
-## Cleanup
-To avoid Azure charges, destroy resources:
+```bash
+git clone <repository-url>
+cd DevOps_Project
+```
+
+### 2. Setup Azure Service Principal
+
+```bash
+# Login to Azure
+az login
+
+# Create service principal
+az ad sp create-for-rbac --name "jenkins-devops-pipeline" --role="Contributor" --scopes="/subscriptions/<your-subscription-id>"
+```
+
+Save the output values - you'll need them for Jenkins credentials.
+
+### 3. Run Jenkins Setup
+
+**For Linux/Mac:**
+
+```bash
+chmod +x setup-jenkins.sh
+./setup-jenkins.sh
+```
+
+**For Windows:**
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\setup-jenkins.ps1
+```
+
+### 4. Configure Jenkins
+
+1. Open http://localhost:8080
+2. Use the initial admin password from the setup script output
+3. Install suggested plugins
+4. Create an admin user
+5. Configure credentials (see [Credentials Setup](#credentials-setup))
+
+### 5. Create Pipeline Job
+
+1. Click "New Item" → "Pipeline"
+2. Name it "DevOps-Pipeline"
+3. Under "Pipeline" section:
+   - Definition: "Pipeline script from SCM"
+   - SCM: Git
+   - Repository URL: Your repository URL
+   - Script Path: `Jenkinsfile`
+4. Save and run!
+
+## 🔐 Credentials Setup
+
+Configure these credentials in Jenkins (Manage Jenkins → Credentials):
+
+| Credential ID           | Type                          | Description                                                        |
+| ----------------------- | ----------------------------- | ------------------------------------------------------------------ |
+| `azure-client-id`       | Secret text                   | Azure Service Principal App ID                                     |
+| `azure-client-secret`   | Secret text                   | Azure Service Principal Password                                   |
+| `azure-subscription-id` | Secret text                   | Your Azure Subscription ID                                         |
+| `azure-tenant-id`       | Secret text                   | Your Azure Tenant ID                                               |
+| `ssh-private-key`       | SSH Username with private key | Username: `azureuser`, Private Key: content of `./ssh-keys/id_rsa` |
+
+## 📝 Configuration Files
+
+### Terraform Variables
+
+Copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars` and update:
+
+```hcl
+resource_group_name = "your-resource-group"
+location           = "East US"
+prefix             = "your-prefix"
+ssh_public_key     = "ssh-rsa AAAAB3NzaC1yc2E... your-email@example.com"
+```
+
+## 🎯 Pipeline Stages
+
+1. **Checkout**: Clone the repository
+2. **Setup SSH Key**: Configure SSH access for Ansible
+3. **Terraform Init**: Initialize Terraform workspace
+4. **Terraform Plan**: Plan infrastructure changes
+5. **Terraform Apply/Destroy**: Apply or destroy infrastructure
+6. **Wait for VM**: Wait for VM to be ready and SSH accessible
+7. **Configure with Ansible**: Install Apache and deploy application
+8. **Verify Deployment**: Test web application accessibility
+
+## 🌐 Accessing Your Application
+
+After successful deployment, your web application will be available at:
+
+```
+http://<azure-vm-public-ip>
+```
+
+The pipeline output will display the exact URL.
+
+## 🧹 Cleanup
+
+To destroy the infrastructure:
+
+1. Run the pipeline again
+2. Set the `ACTION` parameter to `destroy`
+3. Confirm the destruction
+
+Or manually:
+
+```bash
 cd terraform
-terraform destroy -auto-approve
+terraform destroy
+```
 
-Or use Azure CLI:
-az group delete --name devops-pipeline-rg --yes --no-wait
+## 🔧 Troubleshooting
 
-## Troubleshooting
-- SSH Timeout: Verify NSG allows port 22; check SSH key configuration
-- Terraform Auth Errors: Validate Azure credentials; ensure service principal has permissions
-- Ansible Connection: Confirm VM is running; check SSH key permissions and format
+### Common Issues
 
-Debugging Tips:
-- Review Jenkins build logs for detailed errors
-- Enable verbose Ansible output (-v) in the pipeline
-- Check Terraform state files in the workspace
+**Jenkins won't start:**
 
-## Security Best Practices
-- Secrets Management: Store sensitive data in Azure Key Vault for production
-- Access Control: Restrict NSG rules to allow only necessary ports (22, 80)
-- Key Rotation: Regularly update SSH keys and service principal credentials
-- Git Security: Exclude terraform.tfvars from version control
+- Ensure Docker is running
+- Check port 8080 is not in use
+- Verify Docker has sufficient resources
 
-## Production Enhancements
-- Add automated unit and integration tests
-- Implement blue-green or canary deployments
-- Enable monitoring with tools like Prometheus/Grafana
-- Use Terraform remote state (e.g., Azure Blob Storage)
-- Integrate cost monitoring for Azure resources
+**Terraform authentication fails:**
 
-## Contributing
+- Verify Azure credentials in Jenkins
+- Check service principal permissions
+- Ensure subscription ID is correct
+
+**Ansible connection fails:**
+
+- Verify SSH key is properly configured
+- Check Azure Network Security Group rules
+- Ensure VM is fully booted
+
+**Web application not accessible:**
+
+- Check Azure NSG allows HTTP traffic (port 80)
+- Verify Apache is running on the VM
+- Check VM's public IP address
+
+### Logs and Debugging
+
+**Jenkins logs:**
+
+```bash
+docker logs jenkins
+```
+
+**Terraform debug:**
+
+```bash
+export TF_LOG=DEBUG
+terraform apply
+```
+
+**Ansible verbose:**
+
+```bash
+ansible-playbook -vvv install_web.yml
+```
+
+## 🤝 Contributing
+
 1. Fork the repository
-2. Create a feature branch (git checkout -b feature/your-feature)
-3. Commit changes (git commit -m "Add feature")
-4. Push to the branch (git push origin feature/your-feature)
-5. Open a pull request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
+## 📄 License
 
-## Support
-- Check Jenkins logs and Azure portal for issues
-- Open an issue in the repository for assistance
-- Refer to the troubleshooting section
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For issues and questions:
+
+1. Check the troubleshooting section
+2. Review Jenkins and container logs
+3. Open an issue in the repository
+
+---
+
+**Happy DevOps! 🚀**

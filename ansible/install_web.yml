@@ -1,13 +1,126 @@
-- hosts: all
+---
+- name: Install and configure Apache web server
+  hosts: webservers
   become: yes
+  gather_facts: yes
+  
+  vars:
+    web_root: /var/www/html
+    app_name: devops-pipeline-app
+    
   tasks:
-    - name: Install Apache web server
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      tags: [setup]
+
+    - name: Install Apache2
       apt:
         name: apache2
         state: present
-        update_cache: yes
+      tags: [setup]
 
-    - name: Copy custom index.html to web root
+    - name: Install additional packages
+      apt:
+        name:
+          - curl
+          - wget
+          - unzip
+        state: present
+      tags: [setup]
+
+    - name: Start and enable Apache service
+      systemd:
+        name: apache2
+        state: started
+        enabled: yes
+      tags: [setup]
+
+    - name: Remove default Apache index page
+      file:
+        path: "{{ web_root }}/index.html"
+        state: absent
+      tags: [deploy]
+
+    - name: Create application directory
+      file:
+        path: "{{ web_root }}/{{ app_name }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      tags: [deploy]
+
+    - name: Copy application files
       copy:
-        src: ../app/index.html
-        dest: /var/www/html/index.html
+        src: "../app/"
+        dest: "{{ web_root }}/"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      tags: [deploy]
+
+    - name: Set proper permissions for web directory
+      file:
+        path: "{{ web_root }}"
+        owner: www-data
+        group: www-data
+        mode: '0755'
+        recurse: yes
+      tags: [deploy]
+
+    - name: Configure Apache virtual host
+      template:
+        src: vhost.conf.j2
+        dest: /etc/apache2/sites-available/{{ app_name }}.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart apache
+      tags: [config]
+
+    - name: Enable the new site
+      command: a2ensite {{ app_name }}.conf
+      notify: restart apache
+      tags: [config]
+
+    - name: Disable default Apache site
+      command: a2dissite 000-default.conf
+      notify: restart apache
+      tags: [config]
+
+    - name: Enable Apache modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - rewrite
+        - headers
+      notify: restart apache
+      tags: [config]
+
+    - name: Check if Apache is running
+      service:
+        name: apache2
+        state: started
+      tags: [verify]
+
+    - name: Test web server response
+      uri:
+        url: "http://localhost"
+        method: GET
+        status_code: 200
+      register: web_test
+      tags: [verify]
+
+    - name: Display web server status
+      debug:
+        msg: "Web server is responding correctly: {{ web_test.status }}"
+      tags: [verify]
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: apache2
+        state: restarted

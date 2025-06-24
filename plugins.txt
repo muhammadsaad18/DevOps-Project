@@ -1,0 +1,15 @@
+git:latest
+workflow-aggregator:latest
+pipeline-stage-view:latest
+blueocean:latest
+credentials:latest
+ssh-agent:latest
+ansible:latest
+terraform:latest
+azure-credentials:latest
+timestamper:latest
+ws-cleanup:latest
+build-timeout:latest
+github:latest
+pipeline-github-lib:latest
+pipeline-utility-steps:latest

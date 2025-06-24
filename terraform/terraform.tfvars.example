@@ -1,0 +1,12 @@
+# Example Terraform variables file
+# Copy this to terraform.tfvars and update with your values
+
+resource_group_name = "devops-pipeline-rg"
+location           = "East US"
+prefix             = "devops-pipeline"
+environment        = "development"
+vm_size            = "Standard_B1s"
+admin_username     = "azureuser"
+
+# Replace with your actual SSH public key
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... your-email@example.com"
